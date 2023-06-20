@@ -1,0 +1,6 @@
+selenium
+webdriver_manager
+streamlit
+streamlit_extras
+streamlit_echarts
+pandas
