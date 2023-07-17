@@ -79,7 +79,7 @@ if boton_ejecutar:
                     try:
                         driver.get(link)
                         sleep(1)
-                        #Aquí extraerá los elementos que crea convenientes, tenga en cuenta que si es una pagina variable como esta, en función de la categoría que busque, puede generarle errores,  
+                        #Aquí extraerá los elementos que crea convenientes, tenga en cuenta que si es una pagina variable como ésta, deberá mejorar la lógica para que no le arroje errores, éstos son para el ej.  
                         titulo = driver.find_element(By.XPATH, '//h1[contains(@class,"ui-pdp-title")]').text
                         precio_texto = driver.find_element(By.XPATH, '//span[contains(@class,"andes-money-amount ui-pdp-price__part andes-money-amount--cents-superscript andes-money-amount--compact")]').text
                         precio_numero = re.search(r'\d+', precio_texto).group()
@@ -107,10 +107,8 @@ if boton_ejecutar:
 
                         #Imprimir resultados
                         print(titulo)
-                        #print(subtitulo)
                         print(precio_numero)
                         print(descripcion)
-                        #print(localidad)
                         print(imagen)
                         print(link_producto)
                         print(valuacion)
@@ -162,7 +160,7 @@ if os.path.exists('productos_streamlit.csv'):
         price_range = st.slider("Filtrar por rango de precio", float(new_df["Precio"].min()), float(new_df["Precio"].max()), (float(new_df["Precio"].min()), float(new_df["Precio"].max())),step=10.0)
         filtered_df = new_df[(new_df["Precio"] >= price_range[0]) & (new_df["Precio"] <= price_range[1])]
 
-        # Ordenar el DataFrame por la columna "Precio" de manera ascendente o descendente
+        # Ordenar por la columna "Precio" de manera ascendente o descendente
         sort_order = st.radio("Ordenar gráfico por:", ["Ascendente", "Descendente"])
         if sort_order == "Ascendente":
             price_sorted = filtered_df.sort_values("Precio", ascending=True)
