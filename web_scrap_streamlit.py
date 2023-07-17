@@ -20,7 +20,7 @@ if check:
     st.markdown(
         """
         <div style="position: relative; overflow: hidden; padding-top: 75%; height: 0;">
-            <iframe src="https://app.fabric.microsoft.com/view?r=eyJrIjoiODNmNzQyMGYtZjk0Zi00ZTBiLWI2MGMtMzkyOGFkOTFmMTI2IiwidCI6ImRmODY3OWNkLWE4MGUtNDVkOC05OWFjLWM4M2VkN2ZmOTVhMCJ9" 
+            <iframe src="https://app.powerbi.com/view?r=eyJrIjoiODNmNzQyMGYtZjk0Zi00ZTBiLWI2MGMtMzkyOGFkOTFmMTI2IiwidCI6ImRmODY3OWNkLWE4MGUtNDVkOC05OWFjLWM4M2VkN2ZmOTVhMCJ9" 
                     style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"></iframe>
         </div>
         """,
@@ -39,29 +39,18 @@ else:
 if boton_ejecutar:
 
     # Configuración del driver de Selenium
-    #chrome_path = 'chromedriver'
-    #opts = webdriver.ChromeOptions()
-    #service = Service(chrome_path)
-    #driver = webdriver.Chrome(service=service, options=opts)
-
-    @st.cache_resource
-    def get_driver():
-        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-    options = Options()
-    options.add_argument('--disable-gpu')
-    #options.add_argument('--headless')
-    
-    driver = get_driver()
-    
+    chrome_path = '/chromedriver'
+    opts = webdriver.ChromeOptions()
+    service = Service(chrome_path)
+    driver = webdriver.Chrome(service=service, options=opts)
     
     # URL SEMILLA
     url_busqueda = f"https://listado.mercadolibre.com.ar/{producto.replace(' ', '-')}/"
     driver.get(url_busqueda)
     sleep(1)
 
-    
-    PAGINACION_MAX = 2
+    #Elija la cantidad máxima de paginaciones o configurelo en la interfaz como otra opción para el usuario
+    PAGINACION_MAX = 3
     PAGINACION_ACTUAL = 1
 
     # Lógica de extracción de datos
@@ -74,7 +63,7 @@ if boton_ejecutar:
 
     # Crear archivo CSV y escribir encabezados
     with open('productos_streamlit.csv', 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ['Título', 'Precio', 'Descripcion', 'Imagen', 'URL', 'Vendedor', 'Tabla']
+        fieldnames = ['Título', 'Precio', 'Descripcion', 'Imagen', 'URL', 'Vendedor', 'Valoración', 'Tabla']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -90,6 +79,7 @@ if boton_ejecutar:
                     try:
                         driver.get(link)
                         sleep(1)
+                        #Aquí extraerá los elementos que crea convenientes, tenga en cuenta que si es una pagina variable como esta, en función de la categoría que busque, puede generarle errores,  
                         titulo = driver.find_element(By.XPATH, '//h1[contains(@class,"ui-pdp-title")]').text
                         precio_texto = driver.find_element(By.XPATH, '//span[contains(@class,"andes-money-amount ui-pdp-price__part andes-money-amount--cents-superscript andes-money-amount--compact")]').text
                         precio_numero = re.search(r'\d+', precio_texto).group()
@@ -97,7 +87,8 @@ if boton_ejecutar:
                         img = driver.find_element(By.XPATH, '//img[@class="ui-pdp-image ui-pdp-gallery__figure__image"]')
                         imagen = img.get_attribute('src')
                         link_producto = driver.current_url
-                        #vendedor = driver.find_element(By.XPATH, "//p[@class='ui-seller-info__status-info__title ui-pdp-seller__status-title']").text
+                        valuacion = driver.find_element(By.XPATH, "//*[@id='reviews_capability_v3']/div/section/div/div[1]/article/div/div[1]/div[1]/p").text
+                        vendedor = driver.find_element(By.XPATH, "//p[@class='ui-seller-info__status-info__title ui-pdp-seller__status-title']").text
                         ver_mas_caracteristicas = driver.find_element(By.XPATH, '//span[@class="ui-pdp-collapsable__action" and text()="Ver más características"]')
                         ver_mas_caracteristicas.click()
                         sleep(1)
@@ -122,7 +113,8 @@ if boton_ejecutar:
                         #print(localidad)
                         print(imagen)
                         print(link_producto)
-                        #print(vendedor)
+                        print(valuacion)
+                        print(vendedor)
                         print(tabla_texto)
                             
                         # Guardar datos en el archivo CSV
@@ -131,7 +123,8 @@ if boton_ejecutar:
                                         'Descripcion': descripcion,
                                         'Imagen': imagen,
                                         'URL': link_producto,
-                                        #'Vendedor': vendedor,
+                                        'Valoración': valuacion,
+                                        'Vendedor': vendedor,
                                         'Tabla': tabla_texto
                                         })
 
@@ -179,6 +172,8 @@ if os.path.exists('productos_streamlit.csv'):
         # Convertir la columna "Título" y "Precio" en listas
         titulos = price_sorted["Título"].tolist()
         precios = price_sorted["Precio"].tolist()
+        promedio_precios = price_sorted["Precio"].mean()
+        
         options = {
             "xAxis": {
                 "type": "category",
@@ -188,17 +183,25 @@ if os.path.exists('productos_streamlit.csv'):
             "tooltip": {"show": True},
             "sort": sort_order,
             "series": [
-                {"data": precios, 
+                {"name": "$ Precios",
+                "data": precios, 
                 "type": "bar",
                 "tooltip": {"show": True},
-                }
+                },
+                {"name": "$ Promedio",
+                "data": [promedio_precios] * len(titulos),
+                 "type": "line",
+                 "tooltip": {"show": True},
+                },
             ],
+            "legend": {"data": ["$ Precios", "$ Promedio"]},
             "toolbox": {
                 "feature": {
                     "dataView": { "show": True, "readOnly": False },
+                    "magicType": { "show": True, "type": ["line", "bar"] },
                     "dataZoom": { "show": True },
                     "restore": { "show": True },
-                    "saveAsImage": { "show": True }
+                    "saveAsImage": { "show": True },
                     }
             },
             
